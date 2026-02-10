@@ -1,9 +1,6 @@
+// This is a single-line comment in a Jenkinsfile
 pipeline {
-    agent any
-
-
-
-    
+    agent any  
     stages {
         stage('Build & Tag Docker Image') {
             steps {
