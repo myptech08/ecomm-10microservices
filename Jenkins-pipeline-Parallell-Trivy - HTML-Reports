@@ -1,0 +1,340 @@
+pipeline {
+    agent any
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    stages {
+
+        /* =========================
+           GIT CHECKOUT
+        ========================== */
+        stage('Git Checkout') {
+            steps {
+                git branch: 'latest',
+                    url: 'https://github.com/myptech08/10-MicroService-Appliction.git'
+            }
+        }
+
+        /* =========================
+           SONARQUBE SCAN
+        ========================== */
+        stage('SonarQube') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh '''
+                        $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectKey=10-Tier \
+                        -Dsonar.projectName=10-Tier \
+                        -Dsonar.java.binaries=.
+                    '''
+                }
+            }
+        }
+
+        /* =========================
+           PARALLEL BUILD + TRIVY
+        ========================== */
+        stage('Build & Security Scan (Parallel)') {
+            parallel {
+
+                stage('adservice') {
+                    steps {
+                        script {
+                            buildAndScan("adservice","src/adservice")
+                        }
+                    }
+                }
+
+                stage('checkoutservice') {
+                    steps {
+                        script {
+                            buildAndScan("checkoutservice","src/checkoutservice")
+                        }
+                    }
+                }
+
+                stage('currencyservice') {
+                    steps {
+                        script {
+                            buildAndScan("currencyservice","src/currencyservice")
+                        }
+                    }
+                }
+
+                stage('emailservice') {
+                    steps {
+                        script {
+                            buildAndScan("emailservice","src/emailservice")
+                        }
+                    }
+                }
+
+                stage('frontend') {
+                    steps {
+                        script {
+                            buildAndScan("frontend","src/frontend")
+                        }
+                    }
+                }
+
+                stage('loadgenerator') {
+                    steps {
+                        script {
+                            buildAndScan("loadgenerator","src/loadgenerator")
+                        }
+                    }
+                }
+
+                stage('paymentservice') {
+                    steps {
+                        script {
+                            buildAndScan("paymentservice","src/paymentservice")
+                        }
+                    }
+                }
+
+                stage('productcatalogservice') {
+                    steps {
+                        script {
+                            buildAndScan("productcatalogservice","src/productcatalogservice")
+                        }
+                    }
+                }
+
+                stage('recommendationservice') {
+                    steps {
+                        script {
+                            buildAndScan("recommendationservice","src/recommendationservice")
+                        }
+                    }
+                }
+
+                stage('shippingservice') {
+                    steps {
+                        script {
+                            buildAndScan("shippingservice","src/shippingservice")
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+
+    /* =========================
+       ARCHIVE REPORTS
+    ========================== */
+    post {
+        always {
+            archiveArtifacts artifacts: 'trivy-*.html',
+                              fingerprint: true
+        }
+    }
+}
+
+
+/* ===================================
+   REUSABLE FUNCTION (VERY IMPORTANT)
+=================================== */
+
+def buildAndScan(service, path) {
+withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+	dir(path) {
+
+            sh "docker build -t myptech08/${service}:latest ."
+
+            sh """
+            trivy image \
+            --cache-dir /tmp/trivy-${service} \
+            --exit-code 0 \
+            --severity HIGH,CRITICAL \
+            myptech08/${service}:latest
+            """
+
+            sh """
+            trivy image \
+            --cache-dir /tmp/trivy-${service} \
+            --format template \
+            --template '@/opt/trivy/templates/html.tpl' \
+            -o "${WORKSPACE}/trivy-${service}.html" \
+            myptech08/${service}:latest
+            """
+
+            sh "docker push myptech08/${service}:latest"
+
+            // ❌ REMOVE docker rmi here
+        }
+    }
+}
+pipeline {
+    agent any
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    stages {
+
+        /* =========================
+           GIT CHECKOUT
+        ========================== */
+        stage('Git Checkout') {
+            steps {
+                git branch: 'latest',
+                    url: 'https://github.com/myptech08/10-MicroService-Appliction.git'
+            }
+        }
+
+        /* =========================
+           SONARQUBE SCAN
+        ========================== */
+        stage('SonarQube') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh '''
+                        $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectKey=10-Tier \
+                        -Dsonar.projectName=10-Tier \
+                        -Dsonar.java.binaries=.
+                    '''
+                }
+            }
+        }
+
+        /* =========================
+           PARALLEL BUILD + TRIVY
+        ========================== */
+        stage('Build & Security Scan (Parallel)') {
+            parallel {
+
+                stage('adservice') {
+                    steps {
+                        script {
+                            buildAndScan("adservice","src/adservice")
+                        }
+                    }
+                }
+
+                stage('checkoutservice') {
+                    steps {
+                        script {
+                            buildAndScan("checkoutservice","src/checkoutservice")
+                        }
+                    }
+                }
+
+                stage('currencyservice') {
+                    steps {
+                        script {
+                            buildAndScan("currencyservice","src/currencyservice")
+                        }
+                    }
+                }
+
+                stage('emailservice') {
+                    steps {
+                        script {
+                            buildAndScan("emailservice","src/emailservice")
+                        }
+                    }
+                }
+
+                stage('frontend') {
+                    steps {
+                        script {
+                            buildAndScan("frontend","src/frontend")
+                        }
+                    }
+                }
+
+                stage('loadgenerator') {
+                    steps {
+                        script {
+                            buildAndScan("loadgenerator","src/loadgenerator")
+                        }
+                    }
+                }
+
+                stage('paymentservice') {
+                    steps {
+                        script {
+                            buildAndScan("paymentservice","src/paymentservice")
+                        }
+                    }
+                }
+
+                stage('productcatalogservice') {
+                    steps {
+                        script {
+                            buildAndScan("productcatalogservice","src/productcatalogservice")
+                        }
+                    }
+                }
+
+                stage('recommendationservice') {
+                    steps {
+                        script {
+                            buildAndScan("recommendationservice","src/recommendationservice")
+                        }
+                    }
+                }
+
+                stage('shippingservice') {
+                    steps {
+                        script {
+                            buildAndScan("shippingservice","src/shippingservice")
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+
+    /* =========================
+       ARCHIVE REPORTS
+    ========================== */
+    post {
+        always {
+            archiveArtifacts artifacts: 'trivy-*.html',
+                              fingerprint: true
+        }
+    }
+}
+
+
+/* ===================================
+   REUSABLE FUNCTION (VERY IMPORTANT)
+=================================== */
+
+def buildAndScan(service, path) {
+withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+	dir(path) {
+
+            sh "docker build -t myptech08/${service}:latest ."
+
+            sh """
+            trivy image \
+            --cache-dir /tmp/trivy-${service} \
+            --exit-code 0 \
+            --severity HIGH,CRITICAL \
+            myptech08/${service}:latest
+            """
+
+            sh """
+            trivy image \
+            --cache-dir /tmp/trivy-${service} \
+            --format template \
+            --template '@/opt/trivy/templates/html.tpl' \
+            -o "${WORKSPACE}/trivy-${service}.html" \
+            myptech08/${service}:latest
+            """
+
+            sh "docker push myptech08/${service}:latest"
+
+            // ❌ REMOVE docker rmi here
+        }
+    }
+}
